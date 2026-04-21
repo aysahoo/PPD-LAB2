@@ -14,7 +14,8 @@
     "test:coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "promote-admin": "tsx scripts/promote-admin.ts"
+    "promote-admin": "tsx scripts/promote-admin.ts",
+    "delete-legacy-local-documents": "tsx scripts/delete-legacy-local-documents.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.1",
