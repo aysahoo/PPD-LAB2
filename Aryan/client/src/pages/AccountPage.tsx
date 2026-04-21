@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { upload } from '@vercel/blob/client'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button, Card, FileInput, Group, Stack, Text, TextInput } from '@mantine/core'
@@ -54,6 +55,9 @@ const passwordSchema = z.object({
 })
 
 type PasswordValues = z.infer<typeof passwordSchema>
+type StudentDocKind = 'aadhaar' | 'rank'
+
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 
 function AccountContent() {
   const { user, logout, refreshUser } = useAuth()
@@ -150,18 +154,47 @@ function AccountContent() {
     }
   })
 
+  async function uploadDocument(file: File, kind: StudentDocKind) {
+    const token = storage.getToken()
+    if (!token || !user || user.role !== 'student') return
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setDocError('File too large (max 5 MB)')
+      return
+    }
+    if (file.type && file.type !== 'application/pdf') {
+      setDocError('File must be a PDF')
+      return
+    }
+
+    setDocError(null)
+    try {
+      const authorize = await api.postJson<{ pathname: string; uploadUrl: string }>(
+        `/students/${user.id}/documents/${kind}/upload-authorize`,
+        {},
+        token,
+      )
+      const blob = await upload(authorize.pathname, file, {
+        access: 'private',
+        handleUploadUrl: authorize.uploadUrl,
+      })
+      await api.postJson(
+        `/students/${user.id}/documents/${kind}/attach`,
+        { pathname: blob.pathname },
+        token,
+      )
+      await refreshUser()
+    } catch (e) {
+      const fallback = kind === 'aadhaar' ? 'Could not upload Aadhaar PDF' : 'Could not upload rank PDF'
+      setDocError(e instanceof Error ? e.message : fallback)
+    }
+  }
+
   async function uploadAadhaarPdf(file: File) {
     const token = storage.getToken()
     if (!token || !user || user.role !== 'student') return
-    setDocError(null)
     setAadhaarUploading(true)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      await api.postFormData(`/students/${user.id}/documents/aadhaar`, fd, token)
-      await refreshUser()
-    } catch (e) {
-      setDocError(e instanceof Error ? e.message : 'Could not upload Aadhaar PDF')
+      await uploadDocument(file, 'aadhaar')
     } finally {
       setAadhaarUploading(false)
     }
@@ -170,15 +203,9 @@ function AccountContent() {
   async function uploadRankPdf(file: File) {
     const token = storage.getToken()
     if (!token || !user || user.role !== 'student') return
-    setDocError(null)
     setRankUploading(true)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      await api.postFormData(`/students/${user.id}/documents/rank`, fd, token)
-      await refreshUser()
-    } catch (e) {
-      setDocError(e instanceof Error ? e.message : 'Could not upload rank PDF')
+      await uploadDocument(file, 'rank')
     } finally {
       setRankUploading(false)
     }

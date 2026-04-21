@@ -32,6 +32,8 @@ const envSchema = z.object({
     .transform(parseClientOrigins)
     .refine((origins) => origins.length > 0, "CLIENT_ORIGIN must list at least one origin"),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
+  /** Vercel Blob read-write token for private upload + retrieval operations. */
+  BLOB_READ_WRITE_TOKEN: z.string().min(1, "BLOB_READ_WRITE_TOKEN is required"),
   /** Pino log level (e.g. info, warn, error, debug). */
   LOG_LEVEL: z.string().optional().default("info"),
   /** Directory for student PDF uploads (relative to process.cwd() unless absolute). */

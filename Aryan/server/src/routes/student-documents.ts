@@ -1,19 +1,33 @@
+import { del, head } from "@vercel/blob";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { eq } from "drizzle-orm";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { createReadStream } from "node:fs";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { authenticate } from "../auth/guards.js";
 import { db } from "../db/client.js";
 import { users } from "../db/schema.js";
+import { env } from "../env.js";
 import {
-  isPdfMagic,
-  newRelativePath,
   removeFileByRelpath,
   safeAbsolutePath,
-  writePdfBuffer,
   type StudentDocKind,
 } from "../lib/uploads.js";
 import { getUserById, mapStudent } from "../services/students.js";
+
+const BLOB_PATH_PREFIX = "student-documents/";
+const MAX_PDF_BYTES = 5 * 1024 * 1024;
+const UPLOAD_GRANT_TTL_MS = 10 * 60 * 1000;
+
+type UploadGrantPayload = {
+  studentId: number;
+  actorId: number;
+  role: "student" | "admin";
+  kind: StudentDocKind;
+  pathname: string;
+  exp: number;
+};
 
 function parseId(raw: string | undefined): number | null {
   if (raw === undefined) return null;
@@ -21,17 +35,137 @@ function parseId(raw: string | undefined): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+function parseKind(raw: string | undefined): StudentDocKind | null {
+  if (raw === "aadhaar" || raw === "rank") return raw;
+  return null;
+}
+
+function firstHeaderValue(raw: string | string[] | undefined): string | null {
+  if (Array.isArray(raw)) return raw[0]?.trim() ?? null;
+  if (typeof raw === "string") return raw.trim();
+  return null;
+}
+
+function requestOrigin(request: FastifyRequest): string {
+  const forwardedProto = firstHeaderValue(request.headers["x-forwarded-proto"]);
+  const forwardedHost = firstHeaderValue(request.headers["x-forwarded-host"]);
+  const host = forwardedHost ?? firstHeaderValue(request.headers.host) ?? "localhost:3000";
+  const protocol = forwardedProto ?? request.protocol ?? "http";
+  const baseHost = host.split(",")[0]?.trim() || "localhost:3000";
+  const baseProtocol = protocol.split(",")[0]?.trim() || "http";
+  return `${baseProtocol}://${baseHost}`;
+}
+
+function grantSignature(encodedPayload: string): string {
+  return createHmac("sha256", env.JWT_SECRET)
+    .update(encodedPayload)
+    .digest("base64url");
+}
+
+function signUploadGrant(payload: UploadGrantPayload): string {
+  const encodedPayload = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const signature = grantSignature(encodedPayload);
+  return `${encodedPayload}.${signature}`;
+}
+
+function verifyUploadGrant(raw: string): UploadGrantPayload {
+  const [encodedPayload, providedSignature] = raw.split(".");
+  if (!encodedPayload || !providedSignature) {
+    throw new Error("Invalid upload grant");
+  }
+
+  const expectedSignature = grantSignature(encodedPayload);
+  const expected = Buffer.from(expectedSignature, "utf8");
+  const provided = Buffer.from(providedSignature, "utf8");
+  if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) {
+    throw new Error("Invalid upload grant");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
+  } catch {
+    throw new Error("Invalid upload grant payload");
+  }
+
+  if (typeof parsed !== "object" || parsed === null) {
+    throw new Error("Invalid upload grant payload");
+  }
+  const payload = parsed as Partial<UploadGrantPayload>;
+  if (!Number.isInteger(payload.studentId) || payload.studentId! <= 0) {
+    throw new Error("Invalid upload grant payload");
+  }
+  if (!Number.isInteger(payload.actorId) || payload.actorId! <= 0) {
+    throw new Error("Invalid upload grant payload");
+  }
+  if (payload.role !== "student" && payload.role !== "admin") {
+    throw new Error("Invalid upload grant payload");
+  }
+  if (payload.kind !== "aadhaar" && payload.kind !== "rank") {
+    throw new Error("Invalid upload grant payload");
+  }
+  if (typeof payload.pathname !== "string" || payload.pathname.length === 0) {
+    throw new Error("Invalid upload grant payload");
+  }
+  if (!Number.isFinite(payload.exp)) {
+    throw new Error("Invalid upload grant payload");
+  }
+  return payload as UploadGrantPayload;
+}
+
+function isBlobStoredPath(storedPath: string): boolean {
+  return storedPath.startsWith(BLOB_PATH_PREFIX);
+}
+
+function isExpectedBlobPath(storedPath: string, userId: number, kind: StudentDocKind): boolean {
+  return (
+    storedPath.startsWith(`${BLOB_PATH_PREFIX}${userId}/${kind}/`) &&
+    storedPath.endsWith(".pdf")
+  );
+}
+
+async function removeStoredDocument(storedPath: string | null): Promise<void> {
+  if (!storedPath) return;
+  if (isBlobStoredPath(storedPath)) {
+    await del(storedPath);
+    return;
+  }
+  await removeFileByRelpath(storedPath);
+}
+
+async function authorizeStudentDocumentAccess(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  studentId: number,
+) {
+  const uid = request.user!.id;
+  const role = request.user!.role;
+  if (role === "student" && uid !== studentId) {
+    reply.code(403).send({ message: "Forbidden" });
+    return null;
+  }
+
+  const target = await getUserById(studentId);
+  if (!target || target.role !== "student") {
+    reply.code(404).send({ message: "Student not found" });
+    return null;
+  }
+  return target;
+}
+
 export async function studentDocumentRoutes(app: FastifyInstance) {
   app.post(
-    "/:id/documents/aadhaar",
+    "/:id/documents/:kind/upload-authorize",
     { preHandler: [authenticate] },
-    async (request, reply) => handleStudentPdfUpload(request, reply, "aadhaar"),
+    requestBlobUploadAuthorization,
   );
 
+  app.post("/:id/documents/:kind/upload", handleBlobUploadRequest);
+
   app.post(
-    "/:id/documents/rank",
+    "/:id/documents/:kind/attach",
     { preHandler: [authenticate] },
-    async (request, reply) => handleStudentPdfUpload(request, reply, "rank"),
+    attachUploadedPdf,
   );
 
   app.get(
@@ -47,86 +181,168 @@ export async function studentDocumentRoutes(app: FastifyInstance) {
   );
 }
 
-async function handleStudentPdfUpload(
+async function requestBlobUploadAuthorization(
   request: FastifyRequest,
   reply: FastifyReply,
-  kind: StudentDocKind,
 ) {
   const id = parseId((request.params as { id: string }).id);
   if (id === null) {
     return reply.code(400).send({ message: "Invalid student id" });
   }
-  const uid = request.user!.id;
-  const role = request.user!.role;
-  if (role === "student" && uid !== id) {
-    return reply.code(403).send({ message: "Forbidden" });
-  }
-  const target = await getUserById(id);
-  if (!target || target.role !== "student") {
-    return reply.code(404).send({ message: "Student not found" });
+  const kind = parseKind((request.params as { kind?: string }).kind);
+  if (!kind) {
+    return reply.code(400).send({ message: "Invalid document type" });
   }
 
-  if (!request.isMultipart()) {
-    return reply.code(400).send({ message: "Expected multipart form data" });
+  if (!(await authorizeStudentDocumentAccess(request, reply, id))) return;
+
+  const pathname = `${BLOB_PATH_PREFIX}${id}/${kind}/${Date.now()}-${randomUUID()}.pdf`;
+  const grant = signUploadGrant({
+    studentId: id,
+    actorId: request.user!.id,
+    role: request.user!.role,
+    kind,
+    pathname,
+    exp: Date.now() + UPLOAD_GRANT_TTL_MS,
+  });
+  const uploadUrl = `${requestOrigin(request)}/students/${id}/documents/${kind}/upload?grant=${encodeURIComponent(grant)}`;
+
+  return reply.send({ pathname, uploadUrl });
+}
+
+async function handleBlobUploadRequest(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const id = parseId((request.params as { id: string }).id);
+  if (id === null) {
+    return reply.code(400).send({ message: "Invalid student id" });
+  }
+  const kind = parseKind((request.params as { kind?: string }).kind);
+  if (!kind) {
+    return reply.code(400).send({ message: "Invalid document type" });
   }
 
-  let part: Awaited<ReturnType<FastifyRequest["file"]>>;
+  const grant = (request.query as { grant?: string }).grant;
+  if (!grant) {
+    return reply.code(400).send({ message: "Missing upload grant" });
+  }
+
+  let body: HandleUploadBody;
   try {
-    part = await request.file();
+    body = request.body as HandleUploadBody;
+  } catch {
+    return reply.code(400).send({ message: "Invalid upload request body" });
+  }
+
+  try {
+    const result = await handleUpload({
+      body,
+      request: request.raw,
+      onBeforeGenerateToken: async (pathname) => {
+        const parsedGrant = verifyUploadGrant(grant);
+        if (parsedGrant.exp < Date.now()) {
+          throw new Error("Upload grant has expired");
+        }
+        if (
+          parsedGrant.studentId !== id ||
+          parsedGrant.kind !== kind ||
+          parsedGrant.pathname !== pathname
+        ) {
+          throw new Error("Upload grant does not match request");
+        }
+
+        return {
+          allowedContentTypes: ["application/pdf"],
+          maximumSizeInBytes: MAX_PDF_BYTES,
+          validUntil: parsedGrant.exp,
+          addRandomSuffix: false,
+          tokenPayload: JSON.stringify({
+            studentId: parsedGrant.studentId,
+            kind: parsedGrant.kind,
+            pathname: parsedGrant.pathname,
+          }),
+        };
+      },
+      onUploadCompleted: async ({ tokenPayload }) => {
+        if (!tokenPayload) return;
+        try {
+          const parsed = JSON.parse(tokenPayload) as Partial<UploadGrantPayload>;
+          if (
+            !Number.isInteger(parsed.studentId) ||
+            (parsed.kind !== "aadhaar" && parsed.kind !== "rank") ||
+            typeof parsed.pathname !== "string"
+          ) {
+            throw new Error("Invalid upload completion payload");
+          }
+        } catch {
+          throw new Error("Invalid upload completion payload");
+        }
+      },
+    });
+    return reply.send(result);
   } catch (err: unknown) {
-    const code =
-      typeof err === "object" && err !== null && "code" in err
-        ? String((err as { code: unknown }).code)
-        : "";
-    if (code === "FST_REQ_FILE_TOO_LARGE") {
-      return reply.code(413).send({ message: "File too large (max 5 MB)" });
-    }
-    throw err;
+    const message = err instanceof Error ? err.message : "Upload request failed";
+    return reply.code(400).send({ message });
+  }
+}
+
+async function attachUploadedPdf(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const id = parseId((request.params as { id: string }).id);
+  if (id === null) {
+    return reply.code(400).send({ message: "Invalid student id" });
+  }
+  const kind = parseKind((request.params as { kind?: string }).kind);
+  if (!kind) {
+    return reply.code(400).send({ message: "Invalid document type" });
   }
 
-  if (!part || part.type !== "file") {
-    return reply.code(400).send({ message: 'Expected one file field named "file"' });
+  const target = await authorizeStudentDocumentAccess(request, reply, id);
+  if (!target) return;
+
+  const body = request.body as { pathname?: unknown } | undefined;
+  const pathname = typeof body?.pathname === "string" ? body.pathname.trim() : "";
+  if (!pathname) {
+    return reply.code(400).send({ message: "Missing pathname" });
   }
-  if (part.fieldname !== "file") {
-    return reply.code(400).send({ message: 'Expected file field name "file"' });
+  if (!isExpectedBlobPath(pathname, id, kind)) {
+    return reply.code(400).send({ message: "Invalid blob pathname" });
   }
 
-  const buf = await part.toBuffer();
-  if (!isPdfMagic(buf)) {
+  let blobMetadata: Awaited<ReturnType<typeof head>>;
+  try {
+    blobMetadata = await head(pathname);
+  } catch {
+    return reply.code(404).send({ message: "Uploaded blob not found" });
+  }
+  if (!blobMetadata.contentType.startsWith("application/pdf")) {
     return reply.code(400).send({ message: "File must be a PDF" });
   }
 
-  const relpath = newRelativePath(id, kind);
-  const oldRel = kind === "aadhaar" ? target.aadhaarPdfRelpath : target.rankPdfRelpath;
-
-  try {
-    await writePdfBuffer(relpath, buf);
-  } catch (err: unknown) {
-    if (err instanceof Error && err.message === "file_too_large") {
-      return reply.code(413).send({ message: "File too large (max 5 MB)" });
-    }
-    throw err;
-  }
-
+  const oldStoredPath =
+    kind === "aadhaar" ? target.aadhaarPdfRelpath : target.rankPdfRelpath;
   const patch =
     kind === "aadhaar"
-      ? { aadhaarPdfRelpath: relpath }
-      : { rankPdfRelpath: relpath };
+      ? { aadhaarPdfRelpath: pathname }
+      : { rankPdfRelpath: pathname };
 
   let updatedRow: typeof users.$inferSelect | undefined;
   try {
     const [row] = await db.update(users).set(patch).where(eq(users.id, id)).returning();
     updatedRow = row;
     if (!updatedRow) {
-      await removeFileByRelpath(relpath);
+      await del(pathname);
       return reply.code(404).send({ message: "Student not found" });
     }
   } catch (err) {
-    await removeFileByRelpath(relpath);
+    await del(pathname);
     throw err;
   }
 
-  await removeFileByRelpath(oldRel);
+  await removeStoredDocument(oldStoredPath);
   return reply.send(mapStudent(updatedRow));
 }
 
@@ -153,6 +369,32 @@ async function sendStudentPdf(
   if (!relpath?.trim()) {
     return reply.code(404).send({ message: "No file uploaded" });
   }
+
+  if (isBlobStoredPath(relpath)) {
+    let blobMeta: Awaited<ReturnType<typeof head>>;
+    try {
+      blobMeta = await head(relpath);
+    } catch {
+      return reply.code(404).send({ message: "No file uploaded" });
+    }
+
+    let blobResponse: Response;
+    try {
+      blobResponse = await fetch(blobMeta.downloadUrl);
+    } catch {
+      return reply.code(502).send({ message: "Could not fetch document" });
+    }
+    if (!blobResponse.ok) {
+      return reply.code(502).send({ message: "Could not fetch document" });
+    }
+    const data = await blobResponse.arrayBuffer();
+    const filename = kind === "aadhaar" ? "aadhaar.pdf" : "rank.pdf";
+    return reply
+      .header("Content-Type", "application/pdf")
+      .header("Content-Disposition", `inline; filename="${filename}"`)
+      .send(Buffer.from(data));
+  }
+
   const abs = safeAbsolutePath(relpath);
   if (!abs) {
     return reply.code(500).send({ message: "Invalid stored path" });
