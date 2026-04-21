@@ -1,0 +1,47 @@
+@startuml CourseEnrollmentComponents
+title Course registration and enrollment — component diagram\n(same layered package design as architecture)
+
+top to bottom direction
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 50
+
+package "User Interface" {
+  together {
+    [Dashboard] as UI_Dashboard
+    [Course Catalog] as UI_Courses
+    [Enrollment Center] as UI_Enrollments
+    [Reports &\nNotifications] as UI_Reports
+  }
+}
+
+package "Domain Objects" {
+  together {
+    [Student] as Dom_Student
+    [Course] as Dom_Course
+    [Enrollment] as Dom_Enrollment
+    [Notification] as Dom_Notification
+  }
+}
+
+package "Technical Service" {
+  together {
+    [Session Manager] as Tech_Session
+    [Security Access] as Tech_Security
+    [Database Service] as Tech_Database
+    [Visualization Engine] as Tech_Viz
+  }
+}
+
+UI_Dashboard -down-> Dom_Student : Access
+UI_Courses -down-> Dom_Course : Access
+UI_Enrollments -down-> Dom_Enrollment : Access
+UI_Reports -down-> Dom_Notification : Access
+
+Dom_Student -down-> Tech_Session : Views
+Dom_Course -down-> Tech_Security : Views
+Dom_Enrollment -down-> Tech_Database : Views
+Dom_Notification -down-> Tech_Viz : Views
+
+@enduml

@@ -1,0 +1,50 @@
+@startuml EnrollmentActivity
+title Course enrollment workflow\n(UML activity — lab structure)
+
+skinparam ActivityBackgroundColor #FEF9E7
+skinparam ActivityBorderColor #333333
+skinparam ArrowColor #333333
+' Do not use ConditionEndStyle hline here: with nested if + swimlanes it draws
+' extra horizontal bars that look like a merge/sync line crossing into Admin.
+
+|#E3F2FD|Student|
+start
+:Login;
+:Validate User;
+:Select Course;
+:Check course availability;
+
+if (Course available?) then (yes)
+  :Submit Enrollment;
+
+  |#E8F5E9|Administrator|
+  :Admin Approval;
+
+  ' Decision and outcomes stay in Student lane so the join merges only student paths,
+  ' then one arrow to the final state (matches typical lab layout).
+  |#E3F2FD|Student|
+  if (Approved?) then (yes)
+    :Confirm Enrollment;
+  else (no)
+    :Enrollment Rejected;
+  endif
+
+else (no)
+  |#E3F2FD|Student|
+  :Show Message;
+endif
+
+stop
+
+legend right
+  **Typical implementation**
+  Login: authenticate user
+  Validate User: session + role check for enrollment
+  Check availability: profile, capacity, prerequisites, duplicates, course exists
+  Submit: create pending enrollment request
+  Admin Approval: approve or reject request
+  Confirm / Rejected: final status + notify student
+  Show Message: validation or business-rule error to user
+endlegend
+
+@enduml

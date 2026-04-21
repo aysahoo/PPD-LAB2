@@ -1,0 +1,46 @@
+@startuml CourseEnrollmentDeployment
+title Course registration and enrollment — deployment diagram
+
+skinparam node {
+  BackgroundColor #F5F5F5
+  BorderColor #333333
+}
+skinparam database {
+  BackgroundColor #E8F4FD
+  BorderColor #333333
+}
+skinparam cloud {
+  BackgroundColor #FFF8E7
+  BorderColor #333333
+}
+
+node "End user device" as Device {
+  artifact "Web browser" as Browser
+}
+
+node "Frontend hosting" as FrontHost <<execution environment>> {
+  artifact "Static SPA\n(Vite production build)" as SPA
+  note bottom of SPA
+    Serves HTML/JS/CSS.
+    **VITE_API_URL** points at the API origin.
+  end note
+}
+
+node "Backend hosting" as ApiHost <<execution environment>> {
+  artifact "REST API\n(Node 20+ · Fastify)" as API
+  note bottom of API
+    Env: **DATABASE_URL**, **JWT_SECRET**,
+    **CLIENT_ORIGIN** (SPA origin(s) for CORS).
+  end note
+}
+
+database "PostgreSQL" as DB <<managed DB>>
+cloud "Object storage\n(optional)" as Blob <<Vercel Blob>>
+
+Browser --> SPA : HTTPS\n(load UI)
+Browser --> API : HTTPS\n(JSON + cookies / Bearer)
+
+API --> DB : SQL\n(pooled TLS)
+API --> Blob : HTTPS\n(student PDFs,\nwhen configured)
+
+@enduml

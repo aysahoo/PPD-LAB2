@@ -43,7 +43,9 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     <Stack gap={4} component="nav" aria-label="Admin">
       {adminNav.map(({ to, label, icon: Icon }) => {
         const active =
-          location.pathname === to || (to === '/admin/dashboard' && location.pathname === '/admin')
+          location.pathname === to ||
+          (to === '/admin/dashboard' && location.pathname === '/admin') ||
+          (to === '/admin/students' && location.pathname.startsWith('/admin/students'))
         return (
           <MantineNavLink
             key={to}

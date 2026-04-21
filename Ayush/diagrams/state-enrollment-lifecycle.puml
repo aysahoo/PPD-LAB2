@@ -1,0 +1,29 @@
+@startuml EnrollmentLifecycleStateChart
+title Enrollment request — state machine
+
+skinparam state {
+  BackgroundColor #FEF9E7
+  BorderColor #333333
+}
+
+' Initial creation of a row for (user, course).
+[*] --> Pending : submit request\n(new enrollment)
+
+' Administrator decisions (only from Pending).
+Pending --> Approved : approve\n[capacity available]
+Pending --> Rejected : reject
+Pending --> Cancelled : cancel\n(student or admin)
+
+' Student may leave an approved seat.
+Approved --> Cancelled : cancel\n(student or admin)
+
+' After rejection or cancellation, a new request\nreopens the same row as Pending.
+Rejected --> Pending : request again
+Cancelled --> Pending : request again
+
+note bottom of Pending
+  **Approve** and **reject** apply only while status is **Pending**.
+  **Cancel** is allowed for **Pending** or **Approved**.
+end note
+
+@enduml

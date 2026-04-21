@@ -1,0 +1,93 @@
+@startuml EnrollmentSequence
+title Course enrollment — UML sequence diagram\n(lab Q4 layout)
+
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+autonumber
+
+' Administrator last → lifeline on the right.
+participant "Student" as Student
+participant "System" as System
+database "Database" as DB
+participant "Administrator" as Administrator
+
+== Authentication ==
+Student -> System: login()
+activate System
+System -> DB: verifyCredential()
+activate DB
+alt invalid user
+  DB --> System: Invalid User
+  System --> Student: login failed
+  deactivate DB
+  deactivate System
+else valid user
+  DB --> System: Valid User
+  deactivate DB
+
+  == Course selection ==
+  Student -> System: selectCourse()
+  System -> DB: checkCourseAvailability()
+  activate DB
+  alt course unavailable
+    DB --> System: Course Unavailable
+    System --> Student: show message
+    deactivate DB
+    deactivate System
+  else course available
+    DB --> System: Course Available
+    deactivate DB
+
+    == Enrollment (happy path) ==
+    Student -> System: submitEnrollment()
+    System -> Administrator: sendApprovalRequest()
+    activate Administrator
+    note right of System
+      Pending enrollment stored;
+      administrator reviews queue
+    end note
+
+    Administrator -> System: approveEnrollment()
+    deactivate Administrator
+
+    System -> DB: updateEnrollment()
+    activate DB
+    DB --> System: ok
+    deactivate DB
+
+    System --> Student: enrollmentConfirmed()
+    deactivate System
+  end
+end
+
+== Other interactions (lab sheet) ==
+opt cancel enrollment
+  Student -> System: cancelEnrollment()
+  activate System
+  System -> DB: updateEnrollment()
+  activate DB
+  DB --> System: ok
+  deactivate DB
+  System --> Student: cancellation confirmed
+  deactivate System
+  note right of System
+    Student or admin cancels pending/approved enrollment
+  end note
+end
+
+opt generate report
+  Administrator -> System: generateReport()
+  activate System
+  System -> DB: queryAggregates()
+  activate DB
+  DB --> System: metrics
+  deactivate DB
+  System --> Administrator: report (e.g. XLSX)
+  deactivate System
+  note right of System
+    Administrator exports metrics / spreadsheet
+  end note
+end
+
+@enduml

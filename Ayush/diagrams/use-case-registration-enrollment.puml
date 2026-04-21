@@ -1,5 +1,5 @@
-@startuml Ayush_StudentRegistrationEnrollment_UC
-title Student Registration and Enrollment System\nUse case model (from code in Ayush)
+@startuml StudentRegistrationEnrollment_UC
+title Student Registration and Enrollment System\nUse case model
 
 skinparam packageStyle rectangle
 skinparam shadowing false
@@ -35,12 +35,12 @@ administrator --> UC_ManageCourses
 administrator --> UC_ApproveEnrollments
 administrator --> UC_GenerateReports
 
-' --- <<extend>> (optional / branch), grounded in Ayush code ---
-' LoginPage: "No account? Register" — registration is an optional path from sign-in.
+' --- <<extend>> (optional / branch) ---
+' Optional path from sign-in (e.g. "Create account" link on login screen).
 Register ..> Login : <<extend>>
-' auth-context register(): after successful signup, always establishes session via login().
+' After successful registration, session is established (e.g. auto sign-in).
 Register ..> Login : <<include>>
-' CourseDetailPage + enrollments service: incomplete profile blocks request; student may complete account (extends enrollment-selection scenario).
+' When profile is incomplete, completing the account extends the course-selection flow.
 UC_UpdateProfile ..> UC_SelectCourse : <<extend>>\n[ profile incomplete ]
 
 ' --- <<include>> (always pulled in) ---
@@ -53,7 +53,7 @@ UC_ManageCourses ..> Login : <<include>>
 UC_ApproveEnrollments ..> Login : <<include>>
 UC_GenerateReports ..> Login : <<include>>
 
-' enrollments.ts approveEnrollment(): always inserts in-app notification for the student.
+' Approving an enrollment typically notifies the student (e.g. in-app message).
 UC_ApproveEnrollments ..> UC_NotifyStudent : <<include>>
 
 note right of Login
