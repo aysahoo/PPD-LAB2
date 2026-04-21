@@ -1,0 +1,65 @@
+@startuml Ayush_StudentRegistrationEnrollment_UC
+title Student Registration and Enrollment System\nUse case model (from code in Ayush)
+
+skinparam packageStyle rectangle
+skinparam shadowing false
+left to right direction
+
+actor Student as student
+
+rectangle "Student Registration and Enrollment System" {
+  usecase Register
+  usecase Login
+  usecase "Update Profile" as UC_UpdateProfile
+  usecase "Select Course" as UC_SelectCourse
+  usecase "View Enrollment Status" as UC_ViewEnrollmentStatus
+  usecase "Manage Students" as UC_ManageStudents
+  usecase "Manage Courses" as UC_ManageCourses
+  usecase "Approve Enrollments" as UC_ApproveEnrollments
+  usecase "Notify Student" as UC_NotifyStudent
+  usecase "Generate Reports" as UC_GenerateReports
+}
+
+actor Administrator as administrator
+
+student -[hidden]r- administrator
+
+student --> Register
+student --> Login
+student --> UC_UpdateProfile
+student --> UC_SelectCourse
+student --> UC_ViewEnrollmentStatus
+
+administrator --> UC_ManageStudents
+administrator --> UC_ManageCourses
+administrator --> UC_ApproveEnrollments
+administrator --> UC_GenerateReports
+
+' --- <<extend>> (optional / branch), grounded in Ayush code ---
+' LoginPage: "No account? Register" — registration is an optional path from sign-in.
+Register ..> Login : <<extend>>
+' auth-context register(): after successful signup, always establishes session via login().
+Register ..> Login : <<include>>
+' CourseDetailPage + enrollments service: incomplete profile blocks request; student may complete account (extends enrollment-selection scenario).
+UC_UpdateProfile ..> UC_SelectCourse : <<extend>>\n[ profile incomplete ]
+
+' --- <<include>> (always pulled in) ---
+UC_UpdateProfile ..> Login : <<include>>
+UC_SelectCourse ..> Login : <<include>>
+UC_ViewEnrollmentStatus ..> Login : <<include>>
+
+UC_ManageStudents ..> Login : <<include>>
+UC_ManageCourses ..> Login : <<include>>
+UC_ApproveEnrollments ..> Login : <<include>>
+UC_GenerateReports ..> Login : <<include>>
+
+' enrollments.ts approveEnrollment(): always inserts in-app notification for the student.
+UC_ApproveEnrollments ..> UC_NotifyStudent : <<include>>
+
+note right of Login
+  Register: extend = optional link from sign-in;
+  include = register() calls login().
+  Update Profile extends Select Course when profile incomplete.
+end note
+
+@enduml

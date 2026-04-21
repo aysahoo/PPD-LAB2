@@ -7,9 +7,16 @@ type BrandLinkProps = {
 
 export function BrandLink({ onNavigate }: BrandLinkProps) {
   return (
-    <Anchor component={Link} to="/" onClick={onNavigate} underline="never">
+    <Anchor
+      component={Link}
+      to="/"
+      onClick={onNavigate}
+      underline="never"
+      title="Student registration and enrolment system"
+      aria-label="SRES: Student registration and enrolment system"
+    >
       <Text size="sm" fw={600} style={{ letterSpacing: '-0.02em' }}>
-        PPD Lab
+        SRES
       </Text>
     </Anchor>
   )

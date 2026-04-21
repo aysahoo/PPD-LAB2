@@ -10,8 +10,10 @@ export function BrandLink({ onNavigate }: BrandLinkProps) {
       to="/"
       className="shrink-0 text-sm font-semibold tracking-tight"
       onClick={onNavigate}
+      title="Student registration and enrolment system"
+      aria-label="SRES: Student registration and enrolment system"
     >
-      PPD Lab
+      SRES
     </Link>
   )
 }
