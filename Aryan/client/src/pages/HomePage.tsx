@@ -13,7 +13,7 @@ export function HomePage() {
     <PageShell>
       <Stack gap="md" align="flex-start" maw={520}>
         <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.14em' }}>
-          PPD Lab
+          Student registration and enrolment system
         </Text>
         <Title order={1} fz={{ base: '1.75rem', sm: '2rem' }} fw={600} style={{ letterSpacing: '-0.02em' }}>
           Courses and enrollment requests

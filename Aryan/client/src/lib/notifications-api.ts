@@ -15,7 +15,7 @@ export async function markNotificationRead(
 
 export async function adminCreateNotification(
   token: string,
-  body: { userId: number; body: string; type?: string | null },
+  body: { email: string; body: string; type?: string | null },
 ): Promise<NotificationDto> {
   return api.postJson<NotificationDto>('/notifications', body, token)
 }

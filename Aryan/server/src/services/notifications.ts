@@ -1,9 +1,9 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import { db } from "../db/client.js";
 import * as schema from "../db/schema.js";
-import { notifications } from "../db/schema.js";
+import { notifications, users } from "../db/schema.js";
 
 /** Executor for inserts (root `db` or transaction). */
 export type DbLike = NodePgDatabase<typeof schema>;
@@ -95,10 +95,28 @@ export async function markReadForUser(
   return { ok: true, notification: mapRow(updated) };
 }
 
+export type CreateNotificationForAdminResult =
+  | { ok: true; notification: NotificationResponse }
+  | { ok: false; reason: "user_not_found" };
+
 export async function createNotificationForAdmin(input: {
-  userId: number;
+  email: string;
   body: string;
   type?: string | null;
-}): Promise<NotificationResponse> {
-  return insertNotification(db, input);
+}): Promise<CreateNotificationForAdminResult> {
+  const normalized = input.email.trim().toLowerCase();
+  const [u] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(sql`lower(${users.email}) = ${normalized}`)
+    .limit(1);
+  if (!u) {
+    return { ok: false, reason: "user_not_found" };
+  }
+  const notification = await insertNotification(db, {
+    userId: u.id,
+    body: input.body,
+    type: input.type ?? null,
+  });
+  return { ok: true, notification };
 }

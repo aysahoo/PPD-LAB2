@@ -11,7 +11,7 @@ import {
 const adminPreHandlers = [authenticate, requireRole("admin")];
 
 const postBody = z.object({
-  userId: z.number().int().positive(),
+  email: z.string().trim().email().max(100),
   body: z.string().min(1).max(4000),
   type: z.string().max(64).nullable().optional(),
 });
@@ -45,11 +45,14 @@ export async function notificationsRoutes(app: FastifyInstance) {
       return reply.code(400).send({ message: parsed.error, code: "VALIDATION_ERROR" });
     }
     const created = await createNotificationForAdmin({
-      userId: parsed.data.userId,
+      email: parsed.data.email,
       body: parsed.data.body,
       type: parsed.data.type ?? null,
     });
-    return reply.code(201).send(created);
+    if (!created.ok) {
+      return reply.code(404).send({ message: "No user with that email", code: "NOT_FOUND" });
+    }
+    return reply.code(201).send(created.notification);
   });
 
   app.put("/:id/read", { preHandler: authenticate }, async (request, reply) => {

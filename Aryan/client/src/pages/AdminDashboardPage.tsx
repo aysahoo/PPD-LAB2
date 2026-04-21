@@ -22,7 +22,7 @@ type Dashboard = {
 export function AdminDashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [notifyUserId, setNotifyUserId] = useState('')
+  const [notifyEmail, setNotifyEmail] = useState('')
   const [notifyBody, setNotifyBody] = useState('')
   const [notifyBusy, setNotifyBusy] = useState(false)
   const token = storage.getToken() ?? ''
@@ -46,9 +46,9 @@ export function AdminDashboardPage() {
 
   async function sendNotification(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const uid = Number.parseInt(notifyUserId, 10)
-    if (!Number.isFinite(uid) || uid < 1) {
-      notifications.show({ color: 'red', message: 'Enter a valid user ID' })
+    const email = notifyEmail.trim()
+    if (!email) {
+      notifications.show({ color: 'red', message: 'Enter an email address' })
       return
     }
     if (!notifyBody.trim()) {
@@ -57,7 +57,7 @@ export function AdminDashboardPage() {
     }
     setNotifyBusy(true)
     try {
-      await adminCreateNotification(token, { userId: uid, body: notifyBody.trim() })
+      await adminCreateNotification(token, { email, body: notifyBody.trim() })
       notifications.show({ color: 'teal', message: 'Notification sent' })
       setNotifyBody('')
     } catch (err) {
@@ -147,19 +147,18 @@ export function AdminDashboardPage() {
               Send notification
             </Text>
             <Text size="sm" c="dimmed" mb="md">
-              Deliver an in-app message to a user by their numeric ID (students and admins).
+              Deliver an in-app message to a user by their email address (students and admins).
             </Text>
             <form onSubmit={(e) => void sendNotification(e)}>
               <Stack gap="md">
                 <TextInput
-                  label="User ID"
-                  id="notify-user-id"
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={notifyUserId}
-                  onChange={(e) => setNotifyUserId(e.target.value)}
-                  placeholder="e.g. 1"
+                  label="Email address"
+                  id="notify-email"
+                  type="email"
+                  autoComplete="email"
+                  value={notifyEmail}
+                  onChange={(e) => setNotifyEmail(e.target.value)}
+                  placeholder="name@example.com"
                 />
                 <Textarea
                   label="Message"

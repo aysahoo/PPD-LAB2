@@ -50,7 +50,7 @@ export function HomePage() {
         />
         <div className="relative mx-auto max-w-2xl space-y-6 text-center">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            PPD Lab
+            Student registration and enrolment system
           </p>
           <h1
             id="home-hero-heading"
