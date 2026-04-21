@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Button, Card, SimpleGrid, Stack, Text, Textarea, TextInput } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { Download } from 'lucide-react'
 
 import { PageHeading } from '@/components/PageHeading'
 import { maxWField, PageShell } from '@/lib/layout'
@@ -25,6 +26,7 @@ export function AdminDashboardPage() {
   const [notifyEmail, setNotifyEmail] = useState('')
   const [notifyBody, setNotifyBody] = useState('')
   const [notifyBusy, setNotifyBusy] = useState(false)
+  const [reportBusy, setReportBusy] = useState(false)
   const token = storage.getToken() ?? ''
 
   useEffect(() => {
@@ -67,6 +69,31 @@ export function AdminDashboardPage() {
       })
     } finally {
       setNotifyBusy(false)
+    }
+  }
+
+  async function downloadReport() {
+    if (!token) {
+      notifications.show({ color: 'red', message: 'Sign in again to download' })
+      return
+    }
+    setReportBusy(true)
+    try {
+      const blob = await api.getBlob('/admin/reports/download.xlsx', token)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `admin-report-${new Date().toISOString().slice(0, 10)}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+      notifications.show({ color: 'teal', message: 'Report downloaded' })
+    } catch (err) {
+      notifications.show({
+        color: 'red',
+        message: err instanceof Error ? err.message : 'Download failed',
+      })
+    } finally {
+      setReportBusy(false)
     }
   }
 
@@ -140,6 +167,25 @@ export function AdminDashboardPage() {
                 </Text>
               </Text>
             </SimpleGrid>
+          </Card>
+
+          <Card withBorder padding="lg">
+            <Text fw={600} mb={4}>
+              Download report
+            </Text>
+            <Text size="sm" c="dimmed" mb="md">
+              Excel workbook with three sheets: all courses (including prerequisites), all student
+              accounts, and every enrollment with student and course details.
+            </Text>
+            <Button
+              type="button"
+              variant="light"
+              leftSection={<Download size={16} aria-hidden />}
+              loading={reportBusy}
+              onClick={() => void downloadReport()}
+            >
+              {reportBusy ? 'Preparing…' : 'Download Excel report'}
+            </Button>
           </Card>
 
           <Card withBorder padding="lg" maw={maxWField}>

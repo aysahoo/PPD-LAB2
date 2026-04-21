@@ -15,6 +15,7 @@ import {
   reportStudents,
   updateAdmin,
 } from "../services/admin.js";
+import { buildAdminFullReportBuffer } from "../services/admin-report-xlsx.js";
 
 const adminPreHandlers = [authenticate, requireRole("admin")];
 
@@ -82,6 +83,19 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get("/reports/courses", { preHandler: adminPreHandlers }, async (_request, reply) => {
     const rows = await reportCourses();
     return reply.send(rows);
+  });
+
+  app.get("/reports/download.xlsx", { preHandler: adminPreHandlers }, async (_request, reply) => {
+    const buf = await buildAdminFullReportBuffer();
+    const day = new Date().toISOString().slice(0, 10);
+    const filename = `admin-report-${day}.xlsx`;
+    return reply
+      .header(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      )
+      .header("Content-Disposition", `attachment; filename="${filename}"`)
+      .send(buf);
   });
 
   app.get("/admins", { preHandler: adminPreHandlers }, async (_request, reply) => {
