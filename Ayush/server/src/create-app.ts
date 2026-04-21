@@ -1,3 +1,7 @@
+/**
+ * Fastify app factory. Avoid `src/app.ts`: Vercel’s Fastify integration treats that path as
+ * the serverless entry and expects a default export (handler); this file only exports `buildApp`.
+ */
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import swagger from "@fastify/swagger";

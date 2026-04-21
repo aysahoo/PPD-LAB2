@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 
-import { buildApp } from "./app.js";
+import { buildApp } from "./create-app.js";
 
 const RUN = process.env.RUN_DB_INTEGRATION === "1";
 

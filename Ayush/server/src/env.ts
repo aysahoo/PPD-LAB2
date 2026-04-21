@@ -11,7 +11,7 @@ function parseClientOrigins(raw: string): string[] {
 
 /**
  * When NODE_ENV is unset (common on Vercel), defaulting to "development" would
- * enable the pino-pretty transport in app.ts, but pino-pretty is a devDependency
+ * enable the pino-pretty transport in create-app.ts, but pino-pretty is a devDependency
  * and is not installed in production — the function would crash on cold start.
  */
 function resolveNodeEnv(raw: unknown): string {
