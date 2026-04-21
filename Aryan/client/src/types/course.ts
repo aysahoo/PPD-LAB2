@@ -11,6 +11,8 @@ export type Course = {
   description: string;
   credits: number;
   capacity: number;
+  /** Students with approved enrollment (counts toward capacity). */
+  enrolledCount: number;
   createdAt: string;
   updatedAt: string;
   prerequisites: PrerequisiteSummary[];

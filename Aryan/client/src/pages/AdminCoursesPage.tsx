@@ -253,6 +253,7 @@ function AdminCoursesContent() {
                   <Table.Th>Code</Table.Th>
                   <Table.Th>Title</Table.Th>
                   <Table.Th style={{ textAlign: 'right' }}>Credits</Table.Th>
+                  <Table.Th style={{ textAlign: 'right' }}>Filled</Table.Th>
                   <Table.Th style={{ textAlign: 'right' }}>Capacity</Table.Th>
                   <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
                 </Table.Tr>
@@ -263,6 +264,7 @@ function AdminCoursesContent() {
                     <Table.Td fw={500}>{r.code}</Table.Td>
                     <Table.Td>{r.title}</Table.Td>
                     <Table.Td style={{ textAlign: 'right' }}>{r.credits}</Table.Td>
+                    <Table.Td style={{ textAlign: 'right' }}>{r.enrolledCount}</Table.Td>
                     <Table.Td style={{ textAlign: 'right' }}>{r.capacity}</Table.Td>
                     <Table.Td>
                       <Group gap="xs" justify="flex-end" wrap="wrap">

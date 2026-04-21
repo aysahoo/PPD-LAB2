@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { PageHeading } from '@/components/PageHeading'
+import { seatFillPercent, shouldWarnSeatCapacity } from '@/lib/course-seat-warning'
 import { PageShell, ShellRow } from '@/lib/layout'
 import { useAuth } from '@/contexts/auth-context'
 import { api } from '@/lib/api'
@@ -173,8 +174,15 @@ export function CourseDetailPage() {
           />
           <PageHeading
             title={`${course.code} — ${course.title}`}
-            description={`${course.credits} credits · capacity ${course.capacity}`}
+            description={`${course.credits} credits · ${course.enrolledCount} of ${course.capacity} seats filled`}
           />
+
+          {shouldWarnSeatCapacity(course.enrolledCount, course.capacity) ? (
+            <Alert color="orange" title="Limited seats" variant="light">
+              This course is {seatFillPercent(course.enrolledCount, course.capacity)}% full. Request enrollment
+              soon if you need a seat.
+            </Alert>
+          ) : null}
 
           <Card withBorder padding="lg">
             <Text fw={600} mb="xs">

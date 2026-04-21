@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, count, eq, inArray } from "drizzle-orm";
 
 import { db } from "../db/client.js";
 import { coursePrerequisites, courses, enrollments, users } from "../db/schema.js";
@@ -16,12 +16,18 @@ export type CourseResponse = {
   description: string;
   credits: number;
   capacity: number;
+  /** Approved enrollments — same basis as capacity checks. */
+  enrolledCount: number;
   createdAt: string;
   updatedAt: string;
   prerequisites: PrerequisiteSummary[];
 };
 
-function mapRow(row: typeof courses.$inferSelect, prerequisites: PrerequisiteSummary[]): CourseResponse {
+function mapRow(
+  row: typeof courses.$inferSelect,
+  prerequisites: PrerequisiteSummary[],
+  enrolledCount: number,
+): CourseResponse {
   return {
     id: row.id,
     code: row.code,
@@ -29,10 +35,32 @@ function mapRow(row: typeof courses.$inferSelect, prerequisites: PrerequisiteSum
     description: row.description,
     credits: row.credits,
     capacity: row.capacity,
+    enrolledCount,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     prerequisites,
   };
+}
+
+async function approvedEnrollmentCountsForCourses(courseIds: number[]): Promise<Map<number, number>> {
+  if (courseIds.length === 0) return new Map();
+  const countRows = await db
+    .select({
+      courseId: enrollments.courseId,
+      n: count(),
+    })
+    .from(enrollments)
+    .where(and(eq(enrollments.status, "APPROVED"), inArray(enrollments.courseId, courseIds)))
+    .groupBy(enrollments.courseId);
+  return new Map(countRows.map((r) => [r.courseId, Number(r.n)]));
+}
+
+async function approvedEnrollmentCountForCourse(courseId: number): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(enrollments)
+    .where(and(eq(enrollments.courseId, courseId), eq(enrollments.status, "APPROVED")));
+  return Number(row?.n ?? 0);
 }
 
 async function loadPrerequisiteSummaries(courseId: number): Promise<PrerequisiteSummary[]> {
@@ -52,14 +80,16 @@ async function loadPrerequisiteSummaries(courseId: number): Promise<Prerequisite
 
 export async function listCourses(): Promise<CourseResponse[]> {
   const rows = await db.select().from(courses).orderBy(asc(courses.code));
-  return rows.map((row) => mapRow(row, []));
+  const countMap = await approvedEnrollmentCountsForCourses(rows.map((r) => r.id));
+  return rows.map((row) => mapRow(row, [], countMap.get(row.id) ?? 0));
 }
 
 export async function getCourseById(id: number): Promise<CourseResponse | null> {
   const [row] = await db.select().from(courses).where(eq(courses.id, id)).limit(1);
   if (!row) return null;
   const prerequisites = await loadPrerequisiteSummaries(row.id);
-  return mapRow(row, prerequisites);
+  const enrolledCount = await approvedEnrollmentCountForCourse(row.id);
+  return mapRow(row, prerequisites, enrolledCount);
 }
 
 export async function createCourse(data: {
@@ -80,7 +110,7 @@ export async function createCourse(data: {
     })
     .returning();
   if (!row) throw new Error("Insert failed");
-  return mapRow(row, []);
+  return mapRow(row, [], 0);
 }
 
 export async function updateCourse(
@@ -102,7 +132,8 @@ export async function updateCourse(
   const [row] = await db.update(courses).set(patch).where(eq(courses.id, id)).returning();
   if (!row) return null;
   const prerequisites = await loadPrerequisiteSummaries(row.id);
-  return mapRow(row, prerequisites);
+  const enrolledCount = await approvedEnrollmentCountForCourse(row.id);
+  return mapRow(row, prerequisites, enrolledCount);
 }
 
 export async function deleteCourse(id: number): Promise<boolean> {

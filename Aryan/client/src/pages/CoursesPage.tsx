@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { PageHeading } from '@/components/PageHeading'
 import { breadcrumbPresets } from '@/lib/breadcrumb-presets'
+import { seatFillPercent, shouldWarnSeatCapacity } from '@/lib/course-seat-warning'
 import { maxWField, PageShell } from '@/lib/layout'
 import { api } from '@/lib/api'
 import type { Course } from '@/types/course'
@@ -132,8 +133,13 @@ export function CoursesPage() {
                       {c.code} — {c.title}
                     </Text>
                     <Text size="sm" c="dimmed">
-                      {c.credits} credits · capacity {c.capacity}
+                      {c.credits} credits · {c.enrolledCount} of {c.capacity} seats filled
                     </Text>
+                    {shouldWarnSeatCapacity(c.enrolledCount, c.capacity) ? (
+                      <Text size="sm" c="orange" fw={500} role="status">
+                        Warning: {seatFillPercent(c.enrolledCount, c.capacity)}% full — limited seats remaining.
+                      </Text>
+                    ) : null}
                     <Text size="sm" c="teal">
                       View details →
                     </Text>
