@@ -1,4 +1,16 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+function getApiBase(): string {
+  const raw = import.meta.env.VITE_API_URL;
+  const v = typeof raw === "string" ? raw.trim() : "";
+  if (v) return v.replace(/\/$/, "");
+  if (import.meta.env.DEV) return "http://localhost:3000";
+  throw new Error(
+    "Missing VITE_API_URL. In Vercel (frontend project), add Environment Variable VITE_API_URL = your API origin (e.g. https://your-api.vercel.app), then redeploy.",
+  );
+}
+
+function fetchErrorMessage(base: string): string {
+  return `Cannot reach the API (${base}). Confirm VITE_API_URL is your live API URL, and on the API set CLIENT_ORIGIN to include ${typeof window !== "undefined" ? window.location.origin : "this site's origin"} (CORS).`;
+}
 
 type ApiErrorBody = { message?: string };
 
@@ -9,10 +21,16 @@ async function parseJson<T>(res: Response): Promise<T> {
 }
 
 async function fetchAuthorizedBlob(path: string, token: string): Promise<Blob> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "GET",
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const base = getApiBase();
+  let res: Response;
+  try {
+    res = await fetch(`${base}${path}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new Error(fetchErrorMessage(base));
+  }
   if (!res.ok) {
     const text = await res.text();
     let msg = res.statusText || "Request failed";
@@ -31,6 +49,7 @@ export async function apiRequest<T>(
   path: string,
   init?: RequestInit & { token?: string | null },
 ): Promise<T> {
+  const base = getApiBase();
   const headers = new Headers(init?.headers);
   if (init?.body !== undefined && !(init.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
@@ -39,10 +58,15 @@ export async function apiRequest<T>(
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${base}${path}`, {
+      ...init,
+      headers,
+    });
+  } catch {
+    throw new Error(fetchErrorMessage(base));
+  }
   const data = await parseJson<ApiErrorBody & T>(res);
   if (!res.ok) {
     const msg =
