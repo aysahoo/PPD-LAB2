@@ -75,7 +75,7 @@ export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <header className="border-b py-3">
+    <header className="sticky top-0 z-50 border-b bg-background/85 py-3 backdrop-blur-md supports-backdrop-filter:bg-background/70">
       <div
         className={cn(
           shellInnerRow,

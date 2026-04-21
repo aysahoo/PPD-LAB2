@@ -15,32 +15,35 @@ export const maxWField = 'max-w-md'
 export const SHELL_MAX = 'max-w-5xl'
 
 /** Horizontal padding aligned with header edges */
-export const shellPaddingX = 'px-4 sm:px-6'
+export const shellPaddingX = 'px-4 sm:px-6 lg:px-8'
 
 export const shellInnerRow = cn('mx-auto flex w-full', SHELL_MAX, shellPaddingX)
+
+/** Vertical rhythm between breadcrumbs, title, and first content block */
+export const pageIntroStack = 'space-y-4'
 
 /** Default stack for list/detail/settings pages (public + admin) */
 export const pageShell = cn(
   shellInnerRow,
-  'flex flex-col gap-6 py-6',
+  'flex w-full min-w-0 flex-1 flex-col gap-8 py-8 sm:py-10',
 )
 
 /** Narrow forms (account) */
 export const pageShellNarrow = cn(
-  'mx-auto flex w-full max-w-lg flex-col gap-6 py-6',
+  'mx-auto flex w-full min-w-0 max-w-lg flex-1 flex-col gap-8 py-8 sm:py-10',
   shellPaddingX,
 )
 
 /** Centered auth / landing cards — vertical fill, horizontal alignment with shell */
 export const pageShellCentered = cn(
-  'flex flex-1 flex-col items-center justify-center py-6',
+  'mx-auto flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-6 py-10 sm:py-12',
   shellPaddingX,
 )
 
 /** Inline loading / empty states inside the main column */
 export const pageLoadingCenter = cn(
   shellInnerRow,
-  'flex min-h-[200px] flex-1 items-center justify-center py-6 text-muted-foreground',
+  'flex min-h-[240px] flex-1 items-center justify-center py-10 text-muted-foreground',
 )
 
 /** Full-viewport loading before admin shell mounts (matches shell horizontal padding) */

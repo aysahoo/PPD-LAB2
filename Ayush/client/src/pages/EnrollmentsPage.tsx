@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { breadcrumbPresets } from '@/lib/breadcrumb-presets'
-import { pageLoadingCenter, pageShell, pageShellNarrow } from '@/lib/layout'
+import { pageIntroStack, pageLoadingCenter, pageShell, pageShellNarrow } from '@/lib/layout'
 import { useAuth } from '@/contexts/auth-context'
 import { api } from '@/lib/api'
 import * as storage from '@/lib/auth-storage'
@@ -97,26 +97,28 @@ function EnrollmentsContent() {
   if (user.role === 'admin') {
     return (
       <div className={pageShellNarrow}>
-        <Breadcrumbs items={breadcrumbPresets.enrollments} />
-        <Card>
-          <CardHeader>
-            <CardTitle>Student enrollments</CardTitle>
-            <CardDescription>
-              Your account is an administrator. Use{' '}
-              <Link to="/admin/enrollments" className="text-primary underline-offset-4 hover:underline">
-                Admin — Enrollments
-              </Link>{' '}
-              to approve or reject requests.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <div className={pageIntroStack}>
+          <Breadcrumbs items={breadcrumbPresets.enrollments} />
+          <Card>
+            <CardHeader>
+              <CardTitle>Student enrollments</CardTitle>
+              <CardDescription>
+                Your account is an administrator. Use{' '}
+                <Link to="/admin/enrollments" className="text-primary underline-offset-4 hover:underline">
+                  Admin — Enrollments
+                </Link>{' '}
+                to approve or reject requests.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
       </div>
     )
   }
 
   return (
-      <div className={pageShell}>
-      <div className="space-y-3">
+    <div className={pageShell}>
+      <div className={pageIntroStack}>
         <Breadcrumbs items={breadcrumbPresets.enrollments} />
         <PageHeading
           title="My enrollments"

@@ -10,18 +10,20 @@ export function AdminLayout() {
   return (
     <div className="flex min-h-svh flex-col">
       <SkipToContent />
-      <header className="border-b py-3">
+      <header className="sticky top-0 z-50 border-b bg-background/85 py-3 backdrop-blur-md supports-backdrop-filter:bg-background/70">
         <div
           className={cn(
             shellInnerRow,
             'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between',
           )}
         >
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <BrandLink />
-            <span className="text-sm text-muted-foreground">Admin</span>
+            <span className="rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+              Admin
+            </span>
           </div>
-          <nav className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <nav className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-x-5">
             <NotificationMenu />
             <NavLink to="/admin/dashboard" className={navLinkClass}>
               Dashboard
@@ -44,7 +46,11 @@ export function AdminLayout() {
           </nav>
         </div>
       </header>
-      <main id="main-content" className="flex flex-1 flex-col" tabIndex={-1}>
+      <main
+        id="main-content"
+        className="flex min-h-0 min-w-0 flex-1 flex-col bg-muted/25 dark:bg-muted/10"
+        tabIndex={-1}
+      >
         <Outlet />
       </main>
     </div>

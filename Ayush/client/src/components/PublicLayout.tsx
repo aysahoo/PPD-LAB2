@@ -8,7 +8,11 @@ export function PublicLayout() {
     <div className="flex min-h-svh flex-col">
       <SkipToContent />
       <SiteHeader />
-      <main id="main-content" className="flex flex-1 flex-col" tabIndex={-1}>
+      <main
+        id="main-content"
+        className="flex min-h-0 min-w-0 flex-1 flex-col bg-muted/25 dark:bg-muted/10"
+        tabIndex={-1}
+      >
         <Outlet />
       </main>
     </div>

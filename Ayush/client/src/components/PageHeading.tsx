@@ -10,9 +10,11 @@ type PageHeadingProps = {
 /** Standard page title + optional lead (matches admin + public list pages) */
 export function PageHeading({ title, description, className }: PageHeadingProps) {
   return (
-    <div className={cn('space-y-1', className)}>
+    <header className={cn('max-w-3xl space-y-2', className)}>
       <h1 className={pageH1}>{title}</h1>
-      {description ? <p className={pageLead}>{description}</p> : null}
-    </div>
+      {description ? (
+        <p className={cn(pageLead, 'max-w-prose text-pretty')}>{description}</p>
+      ) : null}
+    </header>
   )
 }

@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { pageShell, shellInnerRow } from '@/lib/layout'
+import { pageIntroStack, pageShell, shellInnerRow } from '@/lib/layout'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
 import { api } from '@/lib/api'
@@ -112,7 +112,7 @@ export function CourseDetailPage() {
       : undefined
 
   if (!id) {
-    return <p className={cn(shellInnerRow, 'py-6 text-sm text-destructive')}>Invalid course.</p>
+    return <p className={cn(shellInnerRow, 'py-8 text-sm text-destructive sm:py-10')}>Invalid course.</p>
   }
 
   return (
@@ -159,17 +159,19 @@ export function CourseDetailPage() {
         </>
       ) : (
         <>
-          <Breadcrumbs
-            items={[
-              { label: 'Home', to: '/' },
-              { label: 'Courses', to: '/courses' },
-              { label: course.code },
-            ]}
-          />
-          <PageHeading
-            title={`${course.code} — ${course.title}`}
-            description={`${course.credits} credits · capacity ${course.capacity}`}
-          />
+          <div className={pageIntroStack}>
+            <Breadcrumbs
+              items={[
+                { label: 'Home', to: '/' },
+                { label: 'Courses', to: '/courses' },
+                { label: course.code },
+              ]}
+            />
+            <PageHeading
+              title={`${course.code} — ${course.title}`}
+              description={`${course.credits} credits · capacity ${course.capacity}`}
+            />
+          </div>
 
           <Card>
             <CardHeader>

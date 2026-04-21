@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { breadcrumbPresets } from '@/lib/breadcrumb-presets'
-import { maxWField, pageShell } from '@/lib/layout'
+import { maxWField, pageIntroStack, pageShell } from '@/lib/layout'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import type { Course } from '@/types/course'
@@ -76,7 +76,7 @@ export function CoursesPage() {
 
   return (
     <div className={pageShell}>
-      <div className="space-y-3">
+      <div className={pageIntroStack}>
         <Breadcrumbs items={breadcrumbPresets.courses} />
         <PageHeading
           title="Course catalog"

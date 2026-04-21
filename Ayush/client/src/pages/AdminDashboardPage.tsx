@@ -1,6 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
 
-import { Download } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { PageHeading } from '@/components/PageHeading'
@@ -38,7 +37,6 @@ export function AdminDashboardPage() {
   const [notifyEmail, setNotifyEmail] = useState('')
   const [notifyBody, setNotifyBody] = useState('')
   const [notifyBusy, setNotifyBusy] = useState(false)
-  const [reportBusy, setReportBusy] = useState(false)
   const token = storage.getToken() ?? ''
 
   useEffect(() => {
@@ -78,28 +76,6 @@ export function AdminDashboardPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to send')
     } finally {
       setNotifyBusy(false)
-    }
-  }
-
-  async function downloadReport() {
-    if (!token) {
-      toast.error('Sign in again to download')
-      return
-    }
-    setReportBusy(true)
-    try {
-      const blob = await api.getBlob('/admin/reports/download.xlsx', token)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `admin-report-${new Date().toISOString().slice(0, 10)}.xlsx`
-      a.click()
-      URL.revokeObjectURL(url)
-      toast.success('Report downloaded')
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Download failed')
-    } finally {
-      setReportBusy(false)
     }
   }
 
@@ -153,22 +129,6 @@ export function AdminDashboardPage() {
                   <span className="font-medium tabular-nums">{data.enrollmentCounts.cancelled}</span>
                 </li>
               </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="sm:col-span-2">
-            <CardHeader>
-              <CardTitle>Download report</CardTitle>
-              <CardDescription>
-                Excel workbook with three sheets: all courses (including prerequisites), all student
-                accounts, and every enrollment with student and course details.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button type="button" variant="secondary" disabled={reportBusy} onClick={() => void downloadReport()}>
-                <Download className="mr-2 size-4" aria-hidden />
-                {reportBusy ? 'Preparing…' : 'Download Excel report'}
-              </Button>
             </CardContent>
           </Card>
 

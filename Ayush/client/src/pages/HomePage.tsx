@@ -35,7 +35,7 @@ export function HomePage() {
   const { user, loading } = useAuth();
 
   return (
-    <div className={cn(pageShell, "gap-10 pb-10")}>
+    <div className={cn(pageShell, 'gap-10')}>
       <section
         className="relative overflow-hidden rounded-2xl border border-border/80 bg-linear-to-b from-muted/60 via-background to-muted/30 px-6 py-10 text-card-foreground shadow-sm sm:px-10 sm:py-14"
         aria-labelledby="home-hero-heading"

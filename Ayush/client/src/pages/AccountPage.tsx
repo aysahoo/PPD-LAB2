@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { breadcrumbPresets } from "@/lib/breadcrumb-presets";
-import { pageShellNarrow } from "@/lib/layout";
+import { pageIntroStack, pageShellNarrow } from "@/lib/layout";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import * as storage from "@/lib/auth-storage";
@@ -248,15 +248,17 @@ function AccountContent() {
 
   return (
     <div className={pageShellNarrow}>
-      <Breadcrumbs items={breadcrumbPresets.account} />
-      <PageHeading
-        title="Account"
-        description={
-          user.role === "student"
-            ? "Update your profile — name, email, phone, Aadhaar, rank, and Aadhaar and rank PDFs are required before enrolling."
-            : "Administrator — edit admin users under Admin → Admins."
-        }
-      />
+      <div className={pageIntroStack}>
+        <Breadcrumbs items={breadcrumbPresets.account} />
+        <PageHeading
+          title="Account"
+          description={
+            user.role === "student"
+              ? "Update your profile — name, email, phone, Aadhaar, rank, and Aadhaar and rank PDFs are required before enrolling."
+              : "Administrator — edit admin users under Admin → Admins."
+          }
+        />
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Role</CardTitle>
