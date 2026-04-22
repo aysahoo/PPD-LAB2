@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { PageHeading } from '@/components/PageHeading'
 import { Badge } from '@/components/ui/badge'
@@ -20,18 +21,10 @@ import {
 import { pageShell } from '@/lib/layout'
 import { api } from '@/lib/api'
 import * as storage from '@/lib/auth-storage'
-
-type StudentRow = {
-  id: number
-  name: string | null
-  email: string
-  phone: string | null
-  role: string
-  isActive: boolean
-}
+import type { AdminStudentRecord } from '@/types/student'
 
 export function AdminStudentsPage() {
-  const [rows, setRows] = useState<StudentRow[] | null>(null)
+  const [rows, setRows] = useState<AdminStudentRecord[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const token = storage.getToken() ?? ''
 
@@ -39,7 +32,7 @@ export function AdminStudentsPage() {
     let cancelled = false
     void (async () => {
       try {
-        const list = await api.get<StudentRow[]>('/admin/students', token)
+        const list = await api.get<AdminStudentRecord[]>('/admin/students', token)
         if (!cancelled) setRows(list)
       } catch (e) {
         if (!cancelled) {
@@ -61,7 +54,7 @@ export function AdminStudentsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Directory</CardTitle>
-          <CardDescription>From GET /admin/students</CardDescription>
+          <CardDescription>Open a student to view profile, documents, and enrollments.</CardDescription>
         </CardHeader>
         <CardContent>
           {rows === null ? (
@@ -76,18 +69,34 @@ export function AdminStudentsPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-[100px] text-right">Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.email}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        to={`/admin/students/${r.id}`}
+                        className="text-primary underline-offset-4 hover:underline"
+                      >
+                        {r.email}
+                      </Link>
+                    </TableCell>
                     <TableCell>{r.name ?? '—'}</TableCell>
                     <TableCell>{r.phone ?? '—'}</TableCell>
                     <TableCell>
                       <Badge variant={r.isActive ? 'secondary' : 'outline'}>
                         {r.isActive ? 'active' : 'inactive'}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link
+                        to={`/admin/students/${r.id}`}
+                        className="text-sm text-primary underline-offset-4 hover:underline"
+                      >
+                        View
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))}

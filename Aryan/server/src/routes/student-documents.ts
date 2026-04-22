@@ -1,4 +1,4 @@
-import { del, head } from "@vercel/blob";
+import { del, get, head } from "@vercel/blob";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { eq } from "drizzle-orm";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
@@ -371,28 +371,36 @@ async function sendStudentPdf(
   }
 
   if (isBlobStoredPath(relpath)) {
-    let blobMeta: Awaited<ReturnType<typeof head>>;
+    /** Private blobs require authenticated retrieval via SDK — plain `fetch(downloadUrl)` fails. */
+    let blobGet: Awaited<ReturnType<typeof get>>;
     try {
-      blobMeta = await head(relpath);
+      blobGet = await get(relpath, { access: "private", token: env.BLOB_READ_WRITE_TOKEN });
     } catch {
       return reply.code(404).send({ message: "No file uploaded" });
     }
-
-    let blobResponse: Response;
+    if (!blobGet || blobGet.statusCode !== 200 || blobGet.stream === null) {
+      return reply.code(404).send({ message: "No file uploaded" });
+    }
+    const filename = kind === "aadhaar" ? "aadhaar.pdf" : "rank.pdf";
+    const contentType = blobGet.blob.contentType.startsWith("application/pdf")
+      ? blobGet.blob.contentType
+      : "application/pdf";
     try {
-      blobResponse = await fetch(blobMeta.downloadUrl);
+      const reader = blobGet.stream.getReader();
+      const chunks: Buffer[] = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value?.byteLength) chunks.push(Buffer.from(value));
+      }
+      const body = Buffer.concat(chunks);
+      return reply
+        .header("Content-Type", contentType)
+        .header("Content-Disposition", `inline; filename="${filename}"`)
+        .send(body);
     } catch {
       return reply.code(502).send({ message: "Could not fetch document" });
     }
-    if (!blobResponse.ok) {
-      return reply.code(502).send({ message: "Could not fetch document" });
-    }
-    const data = await blobResponse.arrayBuffer();
-    const filename = kind === "aadhaar" ? "aadhaar.pdf" : "rank.pdf";
-    return reply
-      .header("Content-Type", "application/pdf")
-      .header("Content-Disposition", `inline; filename="${filename}"`)
-      .send(Buffer.from(data));
   }
 
   const abs = safeAbsolutePath(relpath);

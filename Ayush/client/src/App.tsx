@@ -10,6 +10,7 @@ import { AdminCoursesPage } from '@/pages/AdminCoursesPage'
 import { AdminDashboardPage } from '@/pages/AdminDashboardPage'
 import { AdminEnrollmentsPage } from '@/pages/AdminEnrollmentsPage'
 import { AdminReportsPage } from '@/pages/AdminReportsPage'
+import { AdminStudentDetailPage } from '@/pages/AdminStudentDetailPage'
 import { AdminStudentsPage } from '@/pages/AdminStudentsPage'
 import { CourseDetailPage } from '@/pages/CourseDetailPage'
 import { EnrollmentsPage } from '@/pages/EnrollmentsPage'
@@ -45,6 +46,7 @@ export default function App() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboardPage />} />
         <Route path="students" element={<AdminStudentsPage />} />
+        <Route path="students/:id" element={<AdminStudentDetailPage />} />
         <Route path="courses" element={<AdminCoursesPage />} />
         <Route path="enrollments" element={<AdminEnrollmentsPage />} />
         <Route path="reports" element={<AdminReportsPage />} />
